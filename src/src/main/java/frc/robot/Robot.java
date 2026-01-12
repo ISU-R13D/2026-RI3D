@@ -14,13 +14,8 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-
-
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
-
-import javax.xml.catalog.GroupEntry.ResolveType;
-
 import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -34,9 +29,10 @@ public class Robot extends TimedRobot {
   private final SparkMax  left_drive_front = new SparkMax(2, MotorType.kBrushless);
   private final SparkMax  right_drive_back = new SparkMax(3, MotorType.kBrushless);
   private final SparkMax  right_drive_front = new SparkMax(4, MotorType.kBrushless);
-  private final SparkMax  shooter_main = new SparkMax(5, MotorType.kBrushless);
+  private final SparkMax  shooter = new SparkMax(5, MotorType.kBrushless);
   private final SparkMax shooter_secondary = new SparkMax(6, MotorType.kBrushless);
-
+  private final SparkMax intake = new SparkMax(7, MotorType.kBrushless);
+  private final SparkMax climber = new SparkMax(8, MotorType.kBrushless);
 
   SparkMaxConfig left_drive_back_config;
   SparkMaxConfig left_drive_front_config;
@@ -44,14 +40,16 @@ public class Robot extends TimedRobot {
   SparkMaxConfig right_drive_front_config;
   SparkMaxConfig shooter_secondary_config;
 
-  double shooterState = 0;
-  double intakeState = 0;
+  //RobotState Vars
+  boolean shooter_state = false;
+  boolean intake_state = false;
+  boolean emergency_eject = false;
 
-  double shooterSpeed = 1.0;
+  double shooter_speed = 1;
 
   public Robot() {
     initMotorConfig();  
-    
+
     robot_drive = new DifferentialDrive(left_drive_back::set, right_drive_back::set);
 
     //Add the drive motors as a telemetry child to the robot drive 
@@ -63,21 +61,54 @@ public class Robot extends TimedRobot {
     //Send the drivetrain telemetry data to the drivers station
     SmartDashboard.putData("Drivetrain", robot_drive);    
 
+
   }
 
   @Override
   public void teleopPeriodic() {
     robot_drive.arcadeDrive(controller.getLeftY(), controller.getRightX());
+
+    //Controller To State
     if(controller.getYButtonPressed()){
-      if(shooterState != 0)
-        shooterState=0;
-      else
-        shooterState = shooterSpeed;
+      shooter_state = !shooter_state;
     }
 
-    shooter_main.set(shooterState);
+    if(controller.getBButtonPressed()){
+      intake_state = !intake_state;
+    }
+
+    if(controller.getStartButtonPressed()){
+      emergency_eject = !emergency_eject;
+    }
+
+    //State To Machine
+    if(shooter_state == true && !emergency_eject)
+      shooter.set(shooter_speed);
+    else
+      shooter.set(0);
+
+    if(intake_state == true && !emergency_eject)
+      intake.set(1);
+    else
+      intake.set(0);
+    
+    if(emergency_eject)
+    {
+      shooter.set(-1);
+      intake.set(-1);
+    }
+
+    //Controller To Machine
+    if(controller.getLeftTriggerAxis() > .1)
+      climber.set(-controller.getLeftTriggerAxis());
+    else
+      climber.set(controller.getRightTriggerAxis());
+
+    
+    
   }
 
+  //This has been broken into it's own function for organizational purposes
   private void initMotorConfig(){
 
     left_drive_back_config = new SparkMaxConfig();
@@ -103,19 +134,19 @@ public class Robot extends TimedRobot {
     .openLoopRampRate(.5);
 
     shooter_secondary_config
-    .follow(shooter_main.getDeviceId());
-
-
+    .follow(shooter.getDeviceId())
+    .inverted(true);
 
 
     left_drive_back.configure(left_drive_back_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     left_drive_front.configure(left_drive_front_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     right_drive_back.configure(right_drive_back_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     right_drive_front.configure(right_drive_front_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    shooter_secondary.configure(shooter_secondary_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters)
+    shooter_secondary.configure(shooter_secondary_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     //Here we use ResetSafeParameters and PersistParameters because these settings should remain between power cycles.
     //If later you set a temporary mode that does not need to persist between power cycles these should be set to NoResetSafeParameters and NoPersistParameters
 
   }
+
 
 }
