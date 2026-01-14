@@ -6,3 +6,10 @@ Install WPILIB https://docs.wpilib.org/en/latest/docs/zero-to-robot/step-2/wpili
 
 Install RevLib https://docs.revrobotics.com/revlib/install
 
+## Resources
+
+WPILIB Docs https://docs.wpilib.org/en/stable/index.html
+
+## Building
+
+Ensure the robot is connected to the computer running the WPILIB 2026 version of vscode, press ctrl + shift + p, and select WPILIB Deploy Robot Code
