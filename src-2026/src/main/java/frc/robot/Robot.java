@@ -20,9 +20,11 @@ import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 
-public class Robot extends TimedRobot {
-  private final XboxController controller = new XboxController(0);
 
+public class Robot extends TimedRobot {
+
+
+  private final XboxController controller = new XboxController(0);
   private final DifferentialDrive robot_drive;
 
   private final SparkMax  left_drive_back = new SparkMax(1, MotorType.kBrushless);
@@ -39,6 +41,8 @@ public class Robot extends TimedRobot {
   SparkMaxConfig right_drive_back_config;
   SparkMaxConfig right_drive_front_config;
   SparkMaxConfig shooter_secondary_config;
+  SparkMaxConfig intake_config;
+
 
   //RobotState Vars
   boolean shooter_state = false;
@@ -46,6 +50,7 @@ public class Robot extends TimedRobot {
   boolean emergency_eject = false;
 
   double shooter_speed = 1;
+  double shooter_speed_secondary = 1;
 
   public Robot() {
     initMotorConfig();  
@@ -68,44 +73,22 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     robot_drive.arcadeDrive(controller.getLeftY(), controller.getRightX());
 
-    //Controller To State
-    if(controller.getYButtonPressed()){
-      shooter_state = !shooter_state;
+    if(controller.getBButton()){
+      intake.set(.65);
     }
 
-    if(controller.getBButtonPressed()){
-      intake_state = !intake_state;
-    }
-
-    if(controller.getStartButtonPressed()){
-      emergency_eject = !emergency_eject;
-    }
-
-    //State To Machine
-    if(shooter_state == true && !emergency_eject)
-      shooter.set(shooter_speed);
-    else
-      shooter.set(0);
-
-    if(intake_state == true && !emergency_eject)
-      intake.set(1);
-    else
+    if(controller.getYButton()){
       intake.set(0);
-    
-    if(emergency_eject)
-    {
-      shooter.set(-1);
-      intake.set(-1);
     }
+    
+    shooter.set(controller.getRightTriggerAxis());
+    shooter_secondary.set(-controller.getRightTriggerAxis());
 
-    //Controller To Machine
-    if(controller.getLeftTriggerAxis() > .1)
-      climber.set(-controller.getLeftTriggerAxis());
+    if(controller.getXButton())
+      climber.set(controller.getRawAxis(2));
     else
-      climber.set(controller.getRightTriggerAxis());
+      climber.set(-controller.getRawAxis(2));
 
-    
-    
   }
 
   //This has been broken into it's own function for organizational purposes
@@ -115,7 +98,7 @@ public class Robot extends TimedRobot {
     left_drive_front_config = new SparkMaxConfig();
     right_drive_back_config = new SparkMaxConfig();
     right_drive_front_config = new SparkMaxConfig();
-    shooter_secondary_config = new SparkMaxConfig();
+    intake_config = new SparkMaxConfig();
 
     left_drive_back_config
     .inverted(true)
@@ -133,16 +116,15 @@ public class Robot extends TimedRobot {
     .follow(right_drive_back.getDeviceId())
     .openLoopRampRate(.5);
 
-    shooter_secondary_config
-    .follow(shooter.getDeviceId())
-    .inverted(true);
+    intake_config
+    .inverted(false);
 
 
     left_drive_back.configure(left_drive_back_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     left_drive_front.configure(left_drive_front_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     right_drive_back.configure(right_drive_back_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     right_drive_front.configure(right_drive_front_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    shooter_secondary.configure(shooter_secondary_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    intake.configure(intake_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     //Here we use ResetSafeParameters and PersistParameters because these settings should remain between power cycles.
     //If later you set a temporary mode that does not need to persist between power cycles these should be set to NoResetSafeParameters and NoPersistParameters
 
