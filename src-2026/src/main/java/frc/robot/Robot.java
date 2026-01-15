@@ -43,15 +43,6 @@ public class Robot extends TimedRobot {
   SparkMaxConfig shooter_secondary_config;
   SparkMaxConfig intake_config;
 
-
-  //RobotState Vars
-  boolean shooter_state = false;
-  boolean intake_state = false;
-  boolean emergency_eject = false;
-
-  double shooter_speed = 1;
-  double shooter_speed_secondary = 1;
-
   public Robot() {
     initMotorConfig();  
 
