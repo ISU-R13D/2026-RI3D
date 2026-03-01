@@ -48,7 +48,7 @@ public class Robot extends TimedRobot {
 
 
     test_motor_config
-    .inverted(true)
+    .inverted(true);
 
     test_motor.configure(test_motor_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     //Here we use ResetSafeParameters and PersistParameters because these settings should remain between power cycles.
