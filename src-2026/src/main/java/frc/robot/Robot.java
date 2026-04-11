@@ -17,6 +17,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.PersistMode;
+import com.revrobotics.RelativeEncoder;
 import com.revrobotics.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 
@@ -35,6 +36,7 @@ public class Robot extends TimedRobot {
   private final SparkMax shooter_secondary = new SparkMax(6, MotorType.kBrushless);
   private final SparkMax intake = new SparkMax(7, MotorType.kBrushless);
   private final SparkMax climber = new SparkMax(8, MotorType.kBrushless);
+  private final SparkMax intake_actuator = new SparkMax(9, MotorType.kBrushless);
 
   SparkMaxConfig left_drive_back_config;
   SparkMaxConfig left_drive_front_config;
@@ -42,9 +44,17 @@ public class Robot extends TimedRobot {
   SparkMaxConfig right_drive_front_config;
   SparkMaxConfig shooter_secondary_config;
   SparkMaxConfig intake_config;
+  SparkMaxConfig intake_actuator_config;
+
+  RelativeEncoder intake_actuator_encoder;
+
+  boolean intake_actuator_down = false;
 
   public Robot() {
     initMotorConfig();  
+
+    //encoders
+    intake_actuator_encoder = intake_actuator.getEncoder();
 
     robot_drive = new DifferentialDrive(left_drive_back::set, right_drive_back::set);
 
@@ -55,7 +65,9 @@ public class Robot extends TimedRobot {
     SendableRegistry.addChild(robot_drive, right_drive_back);
 
     //Send the drivetrain telemetry data to the drivers station
-    SmartDashboard.putData("Drivetrain", robot_drive);    
+    SmartDashboard.putData("Drivetrain", robot_drive);   
+    
+    SmartDashboard.putNumber("intake_actuator position", intake_actuator_encoder.getPosition());
 
 
   }
@@ -65,19 +77,38 @@ public class Robot extends TimedRobot {
     robot_drive.arcadeDrive(controller.getLeftY(), controller.getRightX());
 
     if(controller.getBButton()){
-      intake.set(.65);
+      intake.set(-1);
     }
 
     if(controller.getYButton()){
       intake.set(0);
     }
     
+    //future encoder stuff
+
+    // if(controller.getRightBumperButtonPressed()){
+    //   intake_actuator_down = !intake_actuator_down;
+    // }
+
+    if(controller.getLeftBumperButton()){
+      intake_actuator.set(.1);
+    }
+    else if(controller.getRightBumperButton()){
+      intake_actuator.set(-0.1);
+    }
+    else
+      intake_actuator.set(0.0);
+
+    //future encoder stuff
+    // if(!intake_actuator_down && intake_actuator_encoder.getPosition() <= 0)
+    //   intake_actuator.set(0);
+
     shooter.set(controller.getRightTriggerAxis());
     shooter_secondary.set(-controller.getRightTriggerAxis());
 
+    if(controller.getAButton())
+      climber.set(controller.getLeftTriggerAxis());
     if(controller.getXButton())
-      climber.set(controller.getRawAxis(2));
-    else
       climber.set(-controller.getRawAxis(2));
 
   }
@@ -89,7 +120,7 @@ public class Robot extends TimedRobot {
     left_drive_front_config = new SparkMaxConfig();
     right_drive_back_config = new SparkMaxConfig();
     right_drive_front_config = new SparkMaxConfig();
-    intake_config = new SparkMaxConfig();
+
 
     left_drive_back_config
     .inverted(true)
@@ -107,19 +138,17 @@ public class Robot extends TimedRobot {
     .follow(right_drive_back.getDeviceId())
     .openLoopRampRate(.5);
 
-    intake_config
-    .inverted(false);
 
 
     left_drive_back.configure(left_drive_back_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     left_drive_front.configure(left_drive_front_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     right_drive_back.configure(right_drive_back_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     right_drive_front.configure(right_drive_front_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    intake.configure(intake_config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
     //Here we use ResetSafeParameters and PersistParameters because these settings should remain between power cycles.
     //If later you set a temporary mode that does not need to persist between power cycles these should be set to NoResetSafeParameters and NoPersistParameters
 
   }
+
 
 
 }
