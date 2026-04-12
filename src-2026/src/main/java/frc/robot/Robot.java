@@ -109,7 +109,7 @@ public class Robot extends TimedRobot {
     if(controller.getAButton())
       climber.set(controller.getLeftTriggerAxis());
     if(controller.getXButton())
-      climber.set(-controller.getRawAxis(2));
+      climber.set(-controller.getLeftTriggerAxis());
 
   }
 
