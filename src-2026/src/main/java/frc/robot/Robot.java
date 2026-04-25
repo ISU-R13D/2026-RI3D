@@ -9,6 +9,7 @@
 
 package frc.robot;
 
+import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.util.sendable.SendableRegistry;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
@@ -16,6 +17,11 @@ import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkMaxConfig;
+
+import java.util.ResourceBundle.Control;
+import java.util.function.IntSupplier;
+
+import com.fasterxml.jackson.databind.util.ClassUtil.Ctor;
 import com.revrobotics.PersistMode;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.ResetMode;
@@ -47,14 +53,18 @@ public class Robot extends TimedRobot {
   SparkMaxConfig intake_actuator_config;
 
   RelativeEncoder intake_actuator_encoder;
+  RelativeEncoder climb_encoder;
+  boolean climb_isUp = false;
+  boolean climb_toggle = false;
+  boolean intake_actuator_isUp = true;
 
-  boolean intake_actuator_down = false;
 
   public Robot() {
     initMotorConfig();  
-
+    //CameraServer.startAutomaticCapture();
     //encoders
     intake_actuator_encoder = intake_actuator.getEncoder();
+    climb_encoder = climber.getEncoder();
 
     robot_drive = new DifferentialDrive(left_drive_back::set, right_drive_back::set);
 
@@ -67,13 +77,18 @@ public class Robot extends TimedRobot {
     //Send the drivetrain telemetry data to the drivers station
     SmartDashboard.putData("Drivetrain", robot_drive);   
     
-    SmartDashboard.putNumber("intake_actuator position", intake_actuator_encoder.getPosition());
 
 
   }
 
   @Override
   public void teleopPeriodic() {
+    SmartDashboard.putNumber("intake_actuator position", intake_actuator_encoder.getPosition());
+    SmartDashboard.putNumber("climb position", climb_encoder.getPosition());
+    SmartDashboard.putBoolean("climb_isUp", climb_isUp);
+    SmartDashboard.putBoolean("climb_toggle", climb_toggle);
+
+
     robot_drive.arcadeDrive(controller.getLeftY(), controller.getRightX());
 
     if(controller.getBButton()){
@@ -86,19 +101,22 @@ public class Robot extends TimedRobot {
     
     //future encoder stuff
 
-    // if(controller.getRightBumperButtonPressed()){
-    //   intake_actuator_down = !intake_actuator_down;
-    // }
-
-    if(controller.getLeftBumperButton()){
-      intake_actuator.set(.1);
+    if(controller.getStartButtonPressed()){
+      intake_actuator_encoder.setPosition(0);
+      climb_encoder.setPosition(0);
     }
-    else if(controller.getRightBumperButton()){
-      intake_actuator.set(-0.1);
-    }
-    else
-      intake_actuator.set(0.0);
 
+
+    if(controller.getRightBumperButtonPressed()){
+      intake_actuator_isUp = !intake_actuator_isUp;
+    }
+
+    if(intake_actuator_isUp && intake_actuator_encoder.getPosition() > 0){
+      intake_actuator.set(-0.15);
+    }
+    if(!intake_actuator_isUp && intake_actuator_encoder.getPosition() < 6){
+      intake_actuator.set(0.05);
+    }
     //future encoder stuff
     // if(!intake_actuator_down && intake_actuator_encoder.getPosition() <= 0)
     //   intake_actuator.set(0);
@@ -106,11 +124,38 @@ public class Robot extends TimedRobot {
     shooter.set(controller.getRightTriggerAxis());
     shooter_secondary.set(-controller.getRightTriggerAxis());
 
-    if(controller.getAButton())
-      climber.set(controller.getLeftTriggerAxis());
-    if(controller.getXButton())
-      climber.set(-controller.getLeftTriggerAxis());
+    if(climb_isUp && climb_toggle){
+      if(climb_encoder.getPosition() <=0){
+        climb_isUp = false;
+        climb_toggle = false;
+      }
+    }
 
+    if(!climb_isUp && climb_toggle){
+      if(climb_encoder.getPosition() >= 60){
+        climb_isUp = true;
+        climb_toggle = false;
+      }
+    }
+
+    if(controller.getXButtonPressed()){
+      climb_toggle = !climb_toggle;
+    }
+
+    if(climb_toggle){
+      double climbSpeed = 0;
+      if(climb_isUp)
+        climbSpeed = -.4;
+      else
+        climbSpeed = .4;
+
+      climber.set(climbSpeed);
+
+    }
+    else
+      climber.set(0);
+
+  
   }
 
   //This has been broken into it's own function for organizational purposes
@@ -120,6 +165,7 @@ public class Robot extends TimedRobot {
     left_drive_front_config = new SparkMaxConfig();
     right_drive_back_config = new SparkMaxConfig();
     right_drive_front_config = new SparkMaxConfig();
+    intake_actuator_config = new SparkMaxConfig();
 
 
     left_drive_back_config
@@ -137,6 +183,7 @@ public class Robot extends TimedRobot {
     right_drive_front_config
     .follow(right_drive_back.getDeviceId())
     .openLoopRampRate(.5);
+
 
 
 
